@@ -1,0 +1,98 @@
+---
+- name: Traefik | Create host config directory
+  ansible.builtin.file:
+    dest: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  with_items:
+    - "{{ traefik_host_confdir }}"
+    - "{{ traefik_host_confdir }}/dynamic-conf"
+    - "{{ traefik_host_confdir }}/ssl-certs"
+
+- name: Traefik | Ensure traefik config
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ traefik_host_confdir }}/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+  with_fileglob:
+    - "../templates/traefik.yml"
+
+- name: Traefik | Ensure traefik dynamic config
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ traefik_host_confdir }}/dynamic-conf/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+  with_fileglob:
+    - "../templates/dynamic-conf/global-basicauth.yml"
+
+- name: Traefik | Start docker traefik container
+  community.docker.docker_compose_v2:
+    project_name: traefik
+    definition:
+      services:
+        traefik:
+          image: "{{ traefik_docker_image }}:{{ traefik_docker_tag }}"
+          command: ["-configFile=/etc/traefik/traefik.yml"]
+          container_name: "{{ traefik_container_name }}"
+          ports: "{{ traefik_ports }}"
+          volumes: "{{ traefik_volumes }}"
+          hostname: "{{ traefik_docker_hostname }}"
+          restart: always
+          labels: "{{ traefik_docker_labels }}"
+          environment: "{{ traefik_environment_vars }}"
+          networks:
+            - "{{ traefik_docker_network_name }}"
+      networks:
+        tf_net:
+          external: true
+          name: "{{ traefik_docker_network_name }}"
+  when: not traefik_swarm_cluster or traefik_swarm_manager is undefined
+
+- name: Deploy traefik to docker swarm
+  when:
+    - traefik_swarm_cluster
+    - traefik_swarm_manager is defined
+  delegate_to: "{{ traefik_swarm_manager }}"
+  block:
+    - name: Ensure pip installation
+      ansible.builtin.package:
+        name: "python3-pip"
+        state: present
+
+    - name: Install newer version of pip itself
+      ansible.builtin.pip:
+        name: "pip"
+        state: latest
+        executable: pip3
+
+    - name: Install jsondiff from pip
+      ansible.builtin.pip:
+        name: "jsondiff"
+        state: present
+        executable: pip3
+
+    - name: Deploy docker traefik container in swarm
+      community.docker.docker_stack:
+        state: present
+        name: "{{ traefik_stack_name }}"
+        with_registry_auth: true
+        compose:
+          - services:
+              traefik:
+                image: "{{ traefik_docker_image }}:{{ traefik_docker_tag }}"
+                command: ["-configFile=/etc/traefik/traefik.yml"]
+                ports: "{{ traefik_ports }}"
+                volumes: "{{ traefik_volumes }}"
+                hostname: "{{ traefik_docker_hostname }}"
+                environment: "{{ traefik_environment_vars }}"
+                deploy: "{{ traefik_swarm_deploy }}"
+            networks:
+              default:
+                name: "{{ traefik_docker_network_name }}"
+      run_once: true

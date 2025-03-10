@@ -1,0 +1,123 @@
+---
+traefik_config:
+  # Global configuration
+  checkNewVersion: true
+  api:
+    dashboard: true
+    insecure: true
+
+  log:
+    level: INFO
+
+  # Entrypoints configuration
+  entryPoints:
+    web:
+      address: :2080
+      http:
+        redirections:
+          entryPoint:
+            to: websecure
+            scheme: https
+    websecure:
+      address: :2443
+      http:
+        tls:
+          certResolver: acmeDNS
+
+  certificatesResolvers:
+    acmeTLS:
+      acme:
+        email: s@sbog.org
+        storage: /etc/traefik/ssl-certs/acme.json
+        tlsChallenge: true
+        #caserver: https://acme-v02.api.letsencrypt.org/directory
+    acmeDNS:
+      acme:
+        email: s@sbog.org
+        storage: /etc/traefik/ssl-certs/acme.json
+        dnsChallenge:
+          provider: cloudflare
+          resolvers:
+            - 1.1.1.1:53
+            - 8.8.8.8:53
+        #caserver: https://acme-v02.api.letsencrypt.org/directory
+
+  # Providers configuration
+  providers:
+    docker:
+      endpoint: unix:///var/run/docker.sock
+      watch: true
+      swarmMode: true
+      exposedbydefault: false
+    file:
+      directory: "{{ traefik_host_confdir }}/dynamic-conf"
+      watch: true
+
+traefik_host_confdir: /etc/traefik
+
+traefik_docker_image: "traefik"
+traefik_docker_tag: v2.10
+traefik_container_name: "traefik"
+traefik_ports:
+  - "2080:2080"
+  - "2443:2443"
+traefik_docker_hostname: "traefik"
+traefik_volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+  - "{{ traefik_host_confdir }}:/etc/traefik"
+
+traefik_docker_labels: []
+traefik_environment_vars:
+  - CF_API_EMAIL=example@example.com
+  - CF_API_KEY=somekey
+
+# Docker-related networking settings
+traefik_docker_network_name: tf_net
+
+traefik_stack_name: traefik
+traefik_swarm_cluster: false
+traefik_web_host: example.com
+traefik_swarm_deploy:
+  mode: global
+  labels:
+    # Enable traefik itself
+    - "traefik.enable=true"
+    - "traefik.docker.network={{ traefik_docker_network_name }}"
+    # Enable dashboard
+    - "traefik.http.routers.dashboard.rule=Host(`{{ traefik_web_host }}`)"
+    - "traefik.http.routers.dashboard.service=dashboard@internal"
+    - "traefik.http.routers.dashboard.middlewares=basic-auth@file"
+    - "traefik.http.routers.dashboard.entrypoints=websecure"
+    - "traefik.http.routers.dashboard.tls=true"
+    - "traefik.http.routers.dashboard.tls.certResolver=acmeDNS"
+    - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+    # Enable api
+    - "traefik.http.routers.api.rule=Host(`{{ traefik_web_host }}`) && PathPrefix(`/api`)"
+    - "traefik.http.routers.api.service=api@internal"
+    - "traefik.http.routers.api.middlewares=basic-auth@file"
+    - "traefik.http.routers.api.entrypoints=websecure"
+    - "traefik.http.routers.api.tls=true"
+    - "traefik.http.routers.api.tls.certResolver=acmeDNS"
+
+traefik_global_basicauth:
+  http:
+    middlewares:
+      basic-auth:
+        basicAuth:
+          users:
+            - "<username>:$apr1$<somedatahere>"
+
+# example traefik_swarm_deploy:
+#   mode: replicated
+#   replicas: 1
+#   update_config:
+#     order: start-first
+#   placement:
+#     max_replicas_per_node: 1
+#     constraints:
+#       - node.labels.monitoring == true
+#   resources:
+#     limits:
+#       memory: 512M
+#     reservations:
+#       memory: 256M
