@@ -1,2 +1,2 @@
 ---
-{{ traefik_config }}
+{{ traefik_config | to_nice_yaml }}

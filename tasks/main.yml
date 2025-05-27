@@ -70,12 +70,26 @@
         name: "pip"
         state: latest
         executable: pip3
+      when:
+        - ansible_distribution == "ubuntu"
+        - ansible_distribution_major_version != 24
 
     - name: Install jsondiff from pip
       ansible.builtin.pip:
         name: "jsondiff"
         state: present
         executable: pip3
+      when:
+        - ansible_distribution == "ubuntu"
+        - ansible_distribution_major_version != 24
+
+    - name: Ensure jsondiff
+      package:
+        name: "python3-jsondiff"
+        state: present
+      when:
+        - ansible_distribution == "ubuntu"
+        - ansible_distribution_major_version == 24
 
     - name: Deploy docker traefik container in swarm
       community.docker.docker_stack:
