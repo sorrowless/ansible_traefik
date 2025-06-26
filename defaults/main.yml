@@ -72,7 +72,10 @@ traefik_environment_vars:
   - CF_API_KEY=somekey
 
 # Docker-related networking settings
-traefik_docker_network_name: tf_net
+traefik_docker_networks: 
+  tf_net:
+    name: "tf_net"
+    external: true
 
 traefik_stack_name: traefik
 traefik_swarm_cluster: false

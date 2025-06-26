@@ -46,12 +46,8 @@
           restart: always
           labels: "{{ traefik_docker_labels }}"
           environment: "{{ traefik_environment_vars }}"
-          networks:
-            - "{{ traefik_docker_network_name }}"
-      networks:
-        tf_net:
-          external: true
-          name: "{{ traefik_docker_network_name }}"
+          networks: "{{ traefik_docker_networks.keys()|list }}"
+      networks: "{{ traefik_docker_networks }}"
   when: not traefik_swarm_cluster or traefik_swarm_manager is undefined
 
 - name: Deploy traefik to docker swarm
@@ -106,7 +102,6 @@
                 hostname: "{{ traefik_docker_hostname }}"
                 environment: "{{ traefik_environment_vars }}"
                 deploy: "{{ traefik_swarm_deploy }}"
-            networks:
-              default:
-                name: "{{ traefik_docker_network_name }}"
+                networks: "{{ traefik_docker_networks.keys()|list }}"
+            networks: "{{ traefik_docker_networks }}"
       run_once: true
