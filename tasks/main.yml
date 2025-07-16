@@ -23,13 +23,12 @@
 
 - name: Traefik | Ensure traefik dynamic config
   ansible.builtin.template:
-    src: "{{ item }}"
-    dest: "{{ traefik_host_confdir }}/dynamic-conf/{{ item | basename }}"
+    src: "../templates/dinamic-conf.yml"
+    dest: "{{ traefik_host_confdir }}/dynamic-conf/{{ item.key }}"
     owner: root
     group: root
     mode: "0644"
-  with_fileglob:
-    - "../templates/dynamic-conf/global-basicauth.yml"
+  with_dict: "{{ traefik_dynamic_confs }}"
 
 - name: Traefik | Start docker traefik container
   community.docker.docker_compose_v2:
