@@ -23,7 +23,7 @@
 
 - name: Traefik | Ensure traefik dynamic config
   ansible.builtin.template:
-    src: "../templates/dinamic-conf.yml"
+    src: "../templates/dynamic-conf.yml"
     dest: "{{ traefik_host_confdir }}/dynamic-conf/{{ item.key }}"
     owner: root
     group: root
