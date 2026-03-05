@@ -57,6 +57,9 @@ traefik_config:
       directory: "{{ traefik_host_confdir }}/dynamic-conf"
       watch: true
 
+traefik_host_user: root
+traefik_host_group: root
+
 traefik_docker_image: "traefik"
 traefik_docker_tag: v3.6.6
 traefik_container_name: "traefik"
