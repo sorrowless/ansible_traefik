@@ -1,4 +1,8 @@
 ---
+- name: Merge traefik confs
+  set_fact:
+    traefik_config: "{{ traefik_config_default | combine(traefik_config, recursive=True) }}"
+
 - name: Traefik | Create host config directory
   ansible.builtin.file:
     dest: "{{ item }}"

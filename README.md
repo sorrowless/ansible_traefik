@@ -50,6 +50,64 @@ traefik_global_basicauth:
             - "user:$apr1$VQFhEy1g$hmCfpWzXYkT.qm8dqCz.w1"
 ```
 
+This role uses two variables to build the final Traefik configuration:
+traefik_config_default — base (shared) configuration
+traefik_config — host- or group-specific overrides
+
+They are merged using a deep (recursive) merge:
+
+```yaml
+- name: Merge traefik confs
+  set_fact:
+    traefik_config: "{{ traefik_config_default | combine(traefik_config, recursive=True) }}"
+```
+
+Example
+
+```yaml
+traefik_config_default:
+  entryPoints:
+    web:
+      address: ":80"
+  providers:
+    docker: {}
+  certificatesResolvers:
+    acmeDNS:
+      acme:
+        dnsChallenge:
+          resolvers:
+            - 1.1.1.1:53
+            - 8.8.8.8:53
+
+traefik_config:
+  entryPoints:
+    web:
+      address: ":8080"
+  certificatesResolvers:
+    acmeDNS:
+      acme:
+        dnsChallenge:
+          resolvers:
+            - 5.5.5.5:53
+```
+
+Result:
+
+```yaml
+traefik_config:
+  entryPoints:
+    web:
+      address: ":8080"
+  providers:
+    docker: {}
+  certificatesResolvers:
+    acmeDNS:
+      acme:
+        dnsChallenge:
+          resolvers:
+            - 5.5.5.5:53
+```
+
 #### Dependencies
 
 None
