@@ -1,6 +1,6 @@
 ---
 traefik_host_confdir: /etc/traefik
-traefik_config:
+traefik_config_default:
   # Global configuration
   checkNewVersion: true
   api:
@@ -28,6 +28,15 @@ traefik_config:
       http:
         tls:
           certResolver: acmeDNS
+    metrics:
+      address: :8888
+
+  metrics:
+    prometheus:
+      entryPoint: metrics
+      addRoutersLabels: true
+      headerLabels:
+        host: X-Forwarded-Host
 
   certificatesResolvers:
     acmeTLS:
@@ -56,6 +65,8 @@ traefik_config:
     file:
       directory: "{{ traefik_host_confdir }}/dynamic-conf"
       watch: true
+
+traefik_config: {}
 
 traefik_host_user: root
 traefik_host_group: root
