@@ -49,6 +49,8 @@
           restart: always
           labels: "{{ traefik_docker_labels }}"
           environment: "{{ traefik_environment_vars }}"
+          user: "{{ traefik_host_user }}:{{ traefik_host_group }}"
+          group_add: "{{ traefik_group_add }}"
           networks: "{{ traefik_docker_networks.keys()|list }}"
       networks: "{{ traefik_docker_networks }}"
   when: not traefik_swarm_cluster or traefik_swarm_manager is undefined
@@ -115,7 +117,23 @@
                 volumes: "{{ traefik_volumes }}"
                 hostname: "{{ traefik_docker_hostname }}"
                 environment: "{{ traefik_environment_vars }}"
+                user: "{{ traefik_host_user }}:{{ traefik_host_group }}"
                 deploy: "{{ traefik_swarm_deploy }}"
                 networks: "{{ traefik_docker_networks.keys()|list }}"
             networks: "{{ traefik_docker_networks }}"
       run_once: true
+
+    - name: Get current service spec
+      community.docker.docker_swarm_service_info:
+        name: "{{ traefik_stack_name }}_traefik"
+      register: service_info
+      run_once: true
+
+    - name: Add docker group if missing
+      ansible.builtin.command:
+        cmd: docker service update --group-add {{ item }} {{ traefik_stack_name }}_traefik
+      run_once: true
+      when: >
+        item | string not in
+        (service_info.Spec.TaskTemplate.ContainerSpec.Groups | default([]) | map('string') | list)
+      loop: "{{ traefik_group_add }}"

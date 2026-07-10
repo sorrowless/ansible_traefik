@@ -104,6 +104,9 @@ traefik_environment_vars:
   - CF_API_EMAIL=example@example.com
   - CF_API_KEY=somekey
 
+# additional groups, 'docker' for example ("999")
+traefik_group_add: []
+
 # Docker-related networking settings
 traefik_docker_networks:
   tf_net:
