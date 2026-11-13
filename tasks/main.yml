@@ -32,7 +32,7 @@
     owner: "{{ traefik_host_user }}"
     group: "{{ traefik_host_group }}"
     mode: "0644"
-  with_dict: "{{ traefik_dynamic_confs }}"
+  with_dict: "{{ traefik_dynamic_confs | combine(traefik_extra_dynamic_confs | default({})) }}"
 
 - name: Traefik | Start docker traefik container
   community.docker.docker_compose_v2:

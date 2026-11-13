@@ -138,6 +138,9 @@ traefik_dynamic_confs:
             users:
               - "<username>:$apr1$<somedatahere>"
 
+# Merged on top of traefik_dynamic_confs (host-specific file provider fragments)
+traefik_extra_dynamic_confs: {}
+
 # example traefik_swarm_deploy:
 #   mode: replicated
 #   replicas: 1
