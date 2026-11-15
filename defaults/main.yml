@@ -63,7 +63,7 @@ traefik_config_default:
       watch: true
       exposedbydefault: false
     file:
-      directory: "{{ traefik_host_confdir }}/dynamic-conf"
+      directory: "/etc/traefik/dynamic-conf"
       watch: true
 
 traefik_config: {}
