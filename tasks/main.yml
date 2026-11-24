@@ -34,6 +34,12 @@
     mode: "0644"
   with_dict: "{{ traefik_dynamic_confs | combine(traefik_extra_dynamic_confs | default({})) }}"
 
+- name: Get docker group info using getent.
+  getent:
+    database: group
+    key: docker
+    split: ':'
+
 - name: Traefik | Start docker traefik container
   community.docker.docker_compose_v2:
     project_name: traefik
@@ -49,6 +55,9 @@
           restart: always
           labels: "{{ traefik_docker_labels }}"
           environment: "{{ traefik_environment_vars }}"
+          user: "{{ traefik_host_user }}:{{ traefik_host_group }}"
+          group_add:
+            - "{{ ansible_facts.getent_group['docker'][1] }}"
           networks: "{{ traefik_docker_networks.keys()|list }}"
       networks: "{{ traefik_docker_networks }}"
   when: not traefik_swarm_cluster or traefik_swarm_manager is undefined
@@ -65,7 +74,7 @@
         state: present
       when:
         - ansible_distribution | lower == "ubuntu"
-        - ansible_distribution_major_version != "24"
+        - ansible_distribution_major_version | int < 24
 
     - name: Install newer version of pip itself
       ansible.builtin.pip:
@@ -74,7 +83,7 @@
         executable: pip3
       when:
         - ansible_distribution | lower == "ubuntu"
-        - ansible_distribution_major_version != "24"
+        - ansible_distribution_major_version | int < 24
 
     - name: Install jsondiff from pip
       ansible.builtin.pip:
@@ -83,7 +92,7 @@
         executable: pip3
       when:
         - ansible_distribution | lower == "ubuntu"
-        - ansible_distribution_major_version != "24"
+        - ansible_distribution_major_version | int < 24
 
     - name: Install jsondiff from pip
       ansible.builtin.pip:
@@ -99,7 +108,7 @@
         state: present
       when:
         - ansible_distribution | lower == "ubuntu"
-        - ansible_distribution_major_version == "24"
+        - ansible_distribution_major_version | int >= 24
 
     - name: Deploy docker traefik container in swarm
       community.docker.docker_stack:
@@ -115,7 +124,22 @@
                 volumes: "{{ traefik_volumes }}"
                 hostname: "{{ traefik_docker_hostname }}"
                 environment: "{{ traefik_environment_vars }}"
+                user: "{{ traefik_host_user }}:{{ traefik_host_group }}"
                 deploy: "{{ traefik_swarm_deploy }}"
                 networks: "{{ traefik_docker_networks.keys()|list }}"
             networks: "{{ traefik_docker_networks }}"
       run_once: true
+
+    - name: Get current service spec
+      community.docker.docker_swarm_service_info:
+        name: "{{ traefik_stack_name }}_traefik"
+      register: service_info
+      run_once: true
+
+    - name: Add docker group if missing
+      ansible.builtin.command:
+        cmd: docker service update --group-add {{ ansible_facts.getent_group["docker"][1] }} {{ traefik_stack_name }}_traefik
+      run_once: true
+      when: >
+        ansible_facts.getent_group["docker"][1] not in
+        (service_info.Spec.TaskTemplate.ContainerSpec.Groups | default([]) | map('string') | list)
